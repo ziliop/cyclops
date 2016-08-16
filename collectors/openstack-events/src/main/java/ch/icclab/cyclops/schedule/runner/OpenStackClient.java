@@ -19,6 +19,7 @@ package ch.icclab.cyclops.schedule.runner;
 import ch.icclab.cyclops.consume.data.mapping.OpenStackEventUDR;
 import ch.icclab.cyclops.load.Loader;
 import ch.icclab.cyclops.load.model.OpenstackSettings;
+import ch.icclab.cyclops.load.model.PublisherCredentials;
 import ch.icclab.cyclops.persistence.HibernateClient;
 import ch.icclab.cyclops.persistence.LatestPullORM;
 import ch.icclab.cyclops.publish.Messenger;
@@ -51,6 +52,7 @@ public class OpenStackClient extends AbstractRunner {
     private HibernateClient hibernateClient;
     private static InfluxDBClient influxDBClient;
     private static OpenstackSettings settings;
+    private static PublisherCredentials publisherCredentials;
     private String dbName;
     private static Messenger messenger;
 
@@ -58,6 +60,7 @@ public class OpenStackClient extends AbstractRunner {
         hibernateClient = HibernateClient.getInstance();
         influxDBClient = InfluxDBClient.getInstance();
         settings = Loader.getSettings().getOpenstackSettings();
+        publisherCredentials = Loader.getSettings().getPublisherCredentials();
         dbName = Loader.getSettings().getOpenstackSettings().getOpenstackEventTable();
         messenger = Messenger.getInstance();
     }
@@ -200,7 +203,11 @@ public class OpenStackClient extends AbstractRunner {
 
         OpenStackEventUDR generatedEvent = fromMapToUDR(clientId, instanceId, fromMills, lastEventInScope.get("status").toString(), usageValues);
 
-        messenger.publish(generatedEvent, "");
+        if (publisherCredentials.getPublisherByDefaultDispatchInsteadOfBroadcast()){
+        	messenger.publish(generatedEvent, "");
+        } else {
+        	messenger.broadcast(generatedEvent);
+        }
 
     }
 
